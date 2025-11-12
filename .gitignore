@@ -1,0 +1,32 @@
+# Ignore everything by default
+*
+!*/
+
+# Include all README files (any extension or case)
+!README*
+!readme*
+!*.md
+
+# Include configuration files
+!.gitignore
+!LICENSE
+!requirements.txt
+
+# Include your custom board files
+!litex-boards/litex_boards/targets/alinx_ax7203.py
+!litex-boards/litex_boards/platforms/alinx_ax7203.py
+
+# Exclude common build/cache artifacts even if matched above
+__pycache__/
+*.pyc
+*.pyo
+build/
+*.bin
+*.bit
+*.elf
+*.hex
+*.img
+*.ext2
+
+# Exclude .git directories in subdirectories
+**/.git/
