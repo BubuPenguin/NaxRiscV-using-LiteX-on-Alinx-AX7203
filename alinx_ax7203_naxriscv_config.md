@@ -44,7 +44,7 @@ This configuration is optimized for running modern software stacks (Linux, JVM) 
 ## Build Command
 
 ```bash
-python3 litex-boards/litex_boards/targets/alinx_ax7203.py --build --cpu-type=naxriscv --cpu-variant=standard --cpu-count=1 --xlen=64 --with-rvc --with-fpu --with-coherent-dma --bus-standard=axi --sys-clk-freq=100e6 --with-ethernet --with-sdcard --toolchain=vivado
+python3 litex-boards/litex_boards/targets/alinx_ax7203.py --build --cpu-type=naxriscv --cpu-variant=standard --cpu-count=1 --xlen=64 --with-rvc --with-fpu --with-coherent-dma --bus-standard=axi --sys-clk-freq=100e6 --with-ethernet --with-sdcard --toolchain=vivado --with_user_accelerator
 ```
 
 **Optional flags for loading/programming:**

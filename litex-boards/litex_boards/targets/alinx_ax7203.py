@@ -35,8 +35,15 @@ from liteeth.phy.s7rgmii import LiteEthPHYRGMII
 # ====================================================================================================
 # USER ACCELERATOR - Import custom accelerator module
 # ====================================================================================================
-# Import from the local user_accelerator.py file
-# You can modify user_accelerator.py with your specific accelerator implementation
+# Add the accelerator directory to Python path so we can import from there
+import sys
+import os
+_accel_dir = os.path.join(os.path.dirname(__file__), "../../../accelerator")
+if os.path.exists(_accel_dir):
+    sys.path.insert(0, os.path.abspath(_accel_dir))
+
+# Import from the accelerator directory
+# You can edit accelerator/user_accelerator.py with your specific implementation
 from user_accelerator import UserAccelerator, SimpleDMAEngine, StreamProcessor, SHA3Accelerator
 # ====================================================================================================
 
@@ -171,13 +178,14 @@ class BaseSoC(SoCCore):
             # - SHA3Accelerator: Cryptographic hash accelerator (placeholder)
             # - Or your own custom class from user_accelerator.py
             
-            self.user_accel = UserAccelerator(
+            # Use SimpleDMAEngine for actual DMA testing
+            self.user_accel = SimpleDMAEngine(
                 data_width    = 32,   # Match your bus data width
                 address_width = 32    # Byte-addressable memory space
             )
             
-            # Alternative: Use the complete DMA engine
-            # self.user_accel = SimpleDMAEngine(
+            # Alternative: Use the placeholder (no DMA)
+            # self.user_accel = UserAccelerator(
             #     data_width    = 32,
             #     address_width = 32
             # )

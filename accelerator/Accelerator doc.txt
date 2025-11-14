@@ -1,0 +1,20 @@
+Official LiteX Resources
+1. LiteX Wiki (Limited but useful)
+Main Wiki: https://github.com/enjoy-digital/litex/wiki
+For Hardware Engineers: https://github.com/enjoy-digital/litex/wiki/LiteX-for-Hardware-Engineers
+Covers basic module integration
+CSR registers
+Interrupts
+Bus architecture
+2. LiteX Source Code (Best documentation!)
+The source code itself is the most reliable documentation:
+litex/soc/integration/soc.py - Shows how dma_bus is created
+litex/soc/cores/dma.py - DMA controller implementations
+litex/soc/cores/usb_ohci.py - USB OHCI with DMA (great example!)
+litex/soc/cores/video.py - Video framebuffer with DMA
+3. LiteX-Boards Repository (Real Examples)
+https://github.com/litex-hub/litex-boards
+We've already looked at several examples:
+digilent_nexys_video.py - USB OHCI DMA
+sqrl_acorn.py - PCIe DMA
+Multiple boards with video DMA

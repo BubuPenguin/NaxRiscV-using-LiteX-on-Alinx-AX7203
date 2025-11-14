@@ -7,6 +7,12 @@
 !readme*
 !*.md
 
+#Include new files
+!versions/alinx_ax7203_linux_noaccel/linux.dts
+!accelerator/
+!accelerator/*
+!accelerator/**
+
 # Include configuration files
 !.gitignore
 !LICENSE
