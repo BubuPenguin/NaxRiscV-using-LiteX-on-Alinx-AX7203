@@ -10,7 +10,7 @@ This configuration is optimized for running modern software stacks (Linux, JVM) 
 - **Type:** NaxRiscv (high-performance CPU core)
 - **Architecture:** 64-bit RISC-V (`--xlen=64`)
 - **Variant:** Standard (balanced performance/resources)
-- **CPU Count:** 1 core
+- **CPU Count:** Dual core
 - **L1 I-Cache:** 16 KB (64 sets, 64-byte blocks)
 - **L1 D-Cache:** 16 KB (64 sets, 64-byte blocks)
 - **L2 Cache:** 128 KB (256 sets, 64-byte blocks, unified)
@@ -44,8 +44,10 @@ This configuration is optimized for running modern software stacks (Linux, JVM) 
 ## Build Command
 
 ```bash
-python3 litex-boards/litex_boards/targets/alinx_ax7203.py --build --cpu-type=naxriscv --cpu-variant=standard --cpu-count=1 --xlen=64 --with-rvc --with-fpu --with-coherent-dma --bus-standard=axi --sys-clk-freq=100e6 --with-ethernet --with-sdcard --toolchain=vivado --with_user_accelerator
+python3 litex-boards/litex_boards/targets/alinx_ax7203.py --build --cpu-type=naxriscv --cpu-variant=standard --cpu-count=2 --xlen=64 --with-rvc --with-fpu --with-coherent-dma --bus-standard=axi --sys-clk-freq=100e6 --with-ethernet --with-sdcard --toolchain=vivado --with-txpow-accelerator
 ```
+
+**Note:** The `--no-compile-gateware` flag can be added to generate the design files and software headers without running the lengthy FPGA synthesis and implementation process.
 
 **Optional flags for loading/programming:**
 - `--load`: Load bitstream to FPGA SRAM (volatile, for testing)
@@ -69,7 +71,8 @@ python litex-boards/litex_boards/targets/alinx_ax7203.py \
     --sys-clk-freq=100e6 \
     --with-ethernet \
     --with-sdcard \
-    --toolchain=vivado
+    --toolchain=vivado \
+    --bios-console=disable
 
 # Or flash to SPI flash (permanent)
 python litex-boards/litex_boards/targets/alinx_ax7203.py \
@@ -85,7 +88,8 @@ python litex-boards/litex_boards/targets/alinx_ax7203.py \
     --sys-clk-freq=100e6 \
     --with-ethernet \
     --with-sdcard \
-    --toolchain=vivado
+    --toolchain=vivado \
+    --bios-console=disable
 ```
 
 Note: The configuration flags (--cpu-type, --xlen, --bus-standard, etc.) are still needed when using --load or --flash alone because LiteX uses them to locate the correct bitstream file in the build directory.
@@ -159,6 +163,43 @@ Note: The configuration flags (--cpu-type, --xlen, --bus-standard, etc.) are sti
 
 **Reasoning:**
 - 100 MHz is a conservative increase that should meet timing on the Artix-7 FPGA
+---
+
+### BIOS Console Configuration
+
+**Default:** `full` (interactive console with history and autocomplete)  
+**Configured:** `disable` (`--bios-console=disable`)  
+**Change:** Full console → Disabled console
+
+**Reasoning:**
+- **Headless operation:** Allows the system to boot automatically without requiring a UART/serial connection
+- **Automatic boot:** The BIOS will execute the boot sequence and then exit, rather than waiting for user input
+- **Production use:** Ideal for embedded systems that need to boot without operator intervention
+- **No console overhead:** Reduces BIOS code size and boot time by removing console initialization
+
+**Behavior with `--bios-console=disable`:**
+- BIOS initializes hardware (DDR, peripherals)
+- BIOS executes boot sequence automatically (SD card, network, flash, etc.)
+- BIOS prints "Done (No Console)" and exits
+- System continues to boot from the selected medium (SD card, network, etc.)
+- **No interactive prompt** - system boots directly without waiting for UART
+
+**When to use:**
+- ✅ Headless/embedded systems without serial console
+- ✅ Production deployments where manual intervention isn't needed
+- ✅ Systems that boot automatically from SD card or network
+
+**When NOT to use:**
+- ❌ Development/debugging where you need BIOS command prompt
+- ❌ Systems where you need to manually select boot medium
+- ❌ Troubleshooting boot issues (use `--bios-console=full` for interactive access)
+
+**Alternative console options:**
+- `--bios-console=full` - Full interactive console (default)
+- `--bios-console=lite` - Minimal console without history
+- `--bios-console=no-history` - Console without command history
+- `--bios-console=no-autocomplete` - Console without tab completion
+
 ---
 
 ### CPU Type

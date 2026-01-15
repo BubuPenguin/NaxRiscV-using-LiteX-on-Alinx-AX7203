@@ -2,6 +2,8 @@
 
 This guide documents the complete process for booting Linux on your Alinx AX7203 board using **OpenSBI** as the second-stage bootloader. The guide is optimized for **WSL2/Ubuntu** environments.
 
+**📚 Note**: This guide is based on the developer tutorial from [linux-on-litex-vexriscv](https://github.com/litex-hub/linux-on-litex-vexriscv), adapted specifically for the Alinx AX7203 board with NaxRiscv CPU.
+
 **⚠️ Troubleshooting**: If you encounter issues, see the companion [Troubleshooting Guide](alinx_ax7203_troubleshooting.md).
 
 ---
@@ -25,14 +27,16 @@ This guide documents the complete process for booting Linux on your Alinx AX7203
 
 ## 1. Prerequisites & System Requirements
 
-### Hardware Requirements
+### Hardware Configuration
 
-- ✅ **Alinx AX7203 board** with FPGA bitstream flashed to QSPI flash
-- ✅ **NaxRiscv CPU** (64-bit) configured at 100 MHz
-- ✅ **512 MB DDR3 SDRAM** configured
-- ✅ **Ethernet (RGMII)** and SD card support added
-- ✅ **Serial console cable** (USB to UART)
-- ✅ **64GB SD card** (minimum 8GB, FAT32 + ext4 partitions)
+This guide uses the following hardware setup:
+
+- **Alinx AX7203 board** with FPGA bitstream flashed to QSPI flash
+- **NaxRiscv CPU** (64-bit) configured at 100 MHz
+- **512 MB DDR3 SDRAM** configured
+- **Ethernet (RGMII)** and SD card support added
+- **Serial console cable** (USB to UART)
+- **64GB SD card** (minimum 8GB, FAT32 + ext4 partitions)
 
 ### Software Requirements
 
@@ -80,7 +84,7 @@ BIOS jumps to OpenSBI at 0x40F00000
   ↓
 OpenSBI prints "Liftoff!" and initializes SBI
   ↓
-OpenSBI jumps to Linux kernel at 0x40000000
+OpenSBI jumps to Linux kernel at 0x41000000
   ↓
 Linux kernel boots with SBI console support
   ↓
@@ -160,8 +164,7 @@ git checkout ae80e67c6b48bbedcd13db753237a25b3dec8301
 cp /home/riscv_dev/naxsoftware_config.txt .config
 export CROSS_COMPILE=$HOME/riscv/bin/riscv64-unknown-linux-gnu-
 make ARCH=riscv olddefconfig
-scripts/config --enable CONFIG_MICREL_PHY
-scripts/config --disable CONFIG_WERROR
+scripts/config --disable CONFIG_WERROR  # Prevents build failures from compiler warnings
 make -j4 ARCH=riscv CROSS_COMPILE=$HOME/riscv/bin/riscv64-unknown-linux-gnu- all
 unset CROSS_COMPILE
 cd ..
@@ -174,12 +177,12 @@ cd ..
 
 # Step 4: Create RootFS (~30-60 minutes) - See Section 7 for full commands
 
-# Step 5: Setup SD Card - See Section 8 for WSL-specific procedure
+# Step 5: Setup SD Card - See Section 8 for WSL2-specific procedure
 
 # Step 6: Boot and verify - See Section 9
 ```
 
-**Note**: Steps 4 and 5 require interactive configuration and WSL-specific procedures. See detailed sections below.
+**Note**: Steps 4 and 5 are WSL2-specific procedures. See detailed sections below.
 
 ---
 
@@ -217,7 +220,6 @@ This setup uses a **local toolchain** installed in `$HOME/riscv` instead of syst
 - No sudo required for installation
 - Multiple toolchain versions can coexist
 - Easy to remove or rebuild
-- Portable across WSL instances
 
 ### Verification
 
@@ -285,35 +287,6 @@ unset CROSS_COMPILE
 
 cd ..
 ```
-
-### Critical Configuration Requirements
-
-The kernel **must** have these options enabled:
-
-#### SBI Console Support (CRITICAL - enables serial output after OpenSBI)
-```
-CONFIG_SERIAL_EARLYCON_RISCV_SBI=y
-CONFIG_RISCV_SBI_V01=y
-CONFIG_RISCV_SBI=y
-CONFIG_HVC_RISCV_SBI=y
-```
-
-**Why needed**: Without these, you'll see "Liftoff!" from OpenSBI, then complete silence. The kernel boots but has no console output.
-
-#### Ethernet Support (Required for networking)
-```
-CONFIG_LITEETH=y          # LiteX Ethernet driver
-CONFIG_MICREL_PHY=y       # PHY driver for KSZ9031RNX chip (CRITICAL!)
-CONFIG_MDIO_BUS=y         # MDIO bus support
-CONFIG_MDIO_DEVICE=y      # MDIO device support
-CONFIG_MII=y              # MII interface support
-CONFIG_PHYLIB=y           # PHY library
-```
-
-**Why CONFIG_MICREL_PHY is critical**: The Alinx AX7203 uses a **Micrel KSZ9031RNX PHY chip**. Without this driver:
-- `networking.service` fails with "Cannot find device"
-- Ethernet interface (eth0) won't appear
-- Even though LiteX BIOS can access the network, Linux cannot
 
 ### Verification
 
@@ -459,7 +432,12 @@ lsblk                    # Show block devices (including loop devices)
 export MNT=$PWD/mnt
 
 # Create 7GB image file (filled with zeros)
+# Note: You can create a smaller image (e.g., 8GB) and write it to a larger partition (16GB+)
+# The filesystem can be resized after boot to use the full partition (see Section 10.2)
 dd if=/dev/zero of=debian-sid-risc-v-root.img bs=1M count=7168
+
+# For 8GB image, use: count=8192
+# For 10GB image, use: count=10240
 
 # Set up loop device
 # --find: Automatically find available loop device
@@ -1102,7 +1080,7 @@ Write-Host "Volume GUID: $volumeId"
 
 ```powershell
 # Navigate to dd.exe location
-cd C:\tools\dd-0.6beta3  # or wherever you extracted dd.exe
+cd C:\Windows\system32\dd-0.6beta3  # or wherever you extracted dd.exe
 
 # Get Volume GUID for F: drive (rootfs partition)
 $volumeId = (Get-Volume -DriveLetter F).UniqueId
@@ -1150,6 +1128,24 @@ Get-Partition -DriveLetter F | Format-List
 ```
 
 **Note**: After writing, Windows may show "You need to format the disk" for F: - **DO NOT FORMAT!** This is normal because Windows cannot read ext4 filesystems.
+
+
+The `dd` command will write the image file byte-for-byte to the partition. If the partition is larger than the image:
+- ✅ The image will be written successfully
+- ✅ The partition will contain the ext4 filesystem
+- ⚠️ **However**: The filesystem will only use the space from the original image (8GB), even though the partition is larger (16GB+)
+
+**After boot, you'll need to resize the filesystem** to use the full partition space. See Section 10.2 below for instructions.
+
+**Example**: Writing 8GB image to 16GB partition:
+```powershell
+# Image is 8GB, partition is 16GB - this works fine!
+.\dd.exe if="\\wsl.localhost\Ubuntu\home\riscv_dev\debian-sid-risc-v-root.img" of="$volumeGuid" bs=1M
+
+# After boot, resize filesystem (see Section 10.2)
+```
+
+**Why this works**: `dd` writes the raw image data to the partition. The partition size doesn't matter as long as it's >= image size. The ext4 filesystem inside the image can be resized later to fill the partition.
 
 ---
 
@@ -1528,6 +1524,60 @@ systemctl restart networking
 dhclient eth0
 ```
 
+#### Resize Root Filesystem to Use Full Partition (If Needed)
+
+**When to do this**: If you wrote an 8GB image to a 16GB+ partition, the filesystem will only use 8GB. Resize it to use the full partition space.
+
+**⚠️ Important**: This must be done **after boot** on the running system, not during image creation.
+
+```bash
+# 1. Check current filesystem size
+df -h /
+# Should show current usage (e.g., 7.0G total if image was 8GB)
+
+# 2. Check partition size
+lsblk
+# Should show partition size (e.g., 16G for mmcblk0p2)
+
+# 3. Resize the filesystem to fill the partition
+# This expands ext4 to use all available space on the partition
+resize2fs /dev/mmcblk0p2
+
+# 4. Verify new size
+df -h /
+# Should now show the full partition size
+
+# 5. Reboot the system
+reboot
+```
+
+**What `resize2fs` does**:
+- Detects the partition size automatically
+- Expands the ext4 filesystem to fill the entire partition
+- No data loss - all files remain intact
+- Works on mounted filesystems (can run while system is running)
+
+**Example output**:
+```bash
+root@alinx_ax7203:~# df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  7.0G  1.5G  5.2G  23% /
+
+root@alinx_ax7203:~# resize2fs /dev/mmcblk0p2
+resize2fs 1.47.0 (5-Feb-2023)
+Filesystem at /dev/mmcblk0p2 is mounted on /; on-line resizing required
+old_desc_blocks = 1, new_desc_blocks = 2
+The filesystem on /dev/mmcblk0p2 is now 3932160 (4k) blocks long.
+
+root@alinx_ax7203:~# df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2   15G  1.5G   13G  11% /
+```
+
+**Troubleshooting**:
+- If `resize2fs` says "filesystem is already X blocks long", the filesystem is already using the full partition - no action needed
+- If resize fails, ensure the partition is not read-only: `mount | grep mmcblk0p2`
+
 ---
 
 ### 10.3 Next Steps
@@ -1743,7 +1793,7 @@ $HOME/riscv/                    - RISC-V toolchain
 
 ### Related Guides
 
-- **LiteX Linux Guide**: https://github.com/litex-hub/linux-on-litex-vexriscv
+- **LiteX Linux Developer Tutorial**: https://github.com/litex-hub/linux-on-litex-vexriscv (This guide is based on this developer tutorial, adapted for Alinx AX7203 with NaxRiscv)
 - **RISC-V SBI Specification**: https://github.com/riscv-non-isa/riscv-sbi-doc
 - **Device Tree Specification**: https://www.devicetree.org/
 

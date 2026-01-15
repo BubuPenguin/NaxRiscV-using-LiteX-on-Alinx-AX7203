@@ -9,6 +9,8 @@
 
 #Include new files
 !versions/alinx_ax7203_linux_noaccel/linux.dts
+!versions/dual_core_txpow/linux.dts
+!versions/single_core_noaccelerator/linux.dts
 !accelerator/
 !accelerator/*
 !accelerator/**
@@ -36,3 +38,4 @@ build/
 
 # Exclude .git directories in subdirectories
 **/.git/
+**/rootfs/
